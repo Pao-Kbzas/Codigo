@@ -1,0 +1,17 @@
+{
+    "Name": "Sistema Médico PACS",
+    "StorageDirectory": "OrthancStorage",
+    "IndexDirectory": "OrthancIndex",
+    "HttpPort": 8042,
+    "RemoteAccessAllowed": true,
+    "AuthenticationEnabled": true,
+    "RegisteredUsers": {
+      "admin": "tucontraseñasegura"
+    },
+    "DicomServerEnabled": true,
+    "DicomAet": "ORTHANC",
+    "DicomPort": 4242,
+    "WebViewer": {
+      "Enabled": true
+    }
+  }

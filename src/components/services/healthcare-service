@@ -1,0 +1,72 @@
+// src/services/healthcare-service.js
+import { Healthcare } from '@google-cloud/healthcare';
+
+// Crear cliente de Healthcare
+const healthcare = new Healthcare();
+
+// Configuración del proyecto
+const projectId = 'TU_PROJECT_ID';
+const location = 'TU_LOCATION'; // ej: 'us-central1'
+const datasetId = 'TU_DATASET_ID';
+const dicomStoreId = 'TU_DICOM_STORE_ID';
+
+// Ruta completa al DICOM store
+const dicomStoreName = `projects/${projectId}/locations/${location}/datasets/${datasetId}/dicomStores/${dicomStoreId}`;
+
+/**
+ * Obtiene una instancia DICOM por ID
+ * @param {string} instanceId - ID de la instancia DICOM
+ * @returns {Promise<Buffer>} - Datos DICOM
+ */
+export async function getDicomInstance(instanceId) {
+  try {
+    const [response] = await healthcare.projects.locations.datasets.dicomStores.studies.series.instances.retrieveInstance({
+      parent: dicomStoreName,
+      dicomWebPath: `instances/${instanceId}`,
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener la instancia DICOM:', error);
+    throw error;
+  }
+}
+
+/**
+ * Busca estudios DICOM para un paciente específico
+ * @param {string} patientId - ID del paciente
+ * @returns {Promise<Array>} - Lista de estudios
+ */
+export async function searchStudiesByPatient(patientId) {
+  try {
+    const [response] = await healthcare.projects.locations.datasets.dicomStores.searchForStudies({
+      parent: dicomStoreName,
+      dicomWebPath: `studies?PatientID=${patientId}`,
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error al buscar estudios:', error);
+    throw error;
+  }
+}
+
+/**
+ * Sube una instancia DICOM al almacenamiento
+ * @param {Buffer} dicomData - Datos DICOM a subir
+ * @returns {Promise<Object>} - Respuesta de la API
+ */
+export async function uploadDicomInstance(dicomData) {
+  try {
+    const [response] = await healthcare.projects.locations.datasets.dicomStores.storeInstances({
+      parent: dicomStoreName,
+      dicomWebPath: 'studies',
+      requestBody: dicomData,
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error al subir la instancia DICOM:', error);
+    throw error;
+  }
+}

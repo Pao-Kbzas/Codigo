@@ -1,125 +1,191 @@
-import React, { useState } from 'react';
-import './App.css';
-import Dashboard from './pages/Dashboard';
-import Agenda from './pages/Agenda';
-import Pacientes from './pages/Pacientes';
-import Imagenes from './pages/Imagenes';
-import { Box, Container, List, ListItem, ListItemIcon, ListItemText, Paper, Typography } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import PeopleIcon from '@mui/icons-material/People';
-import ImageIcon from '@mui/icons-material/Image';
+// src/App.js
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { onAuthChange } from './services/auth-service';
+
+// Componentes de autenticación
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import PasswordReset from './components/auth/PasswordReset';
+
+// Páginas principales
+import Dashboard from './components/pages/Dashboard';
+import PatientPage from './components/pages/PatientPage';
+import AppointmentPage from './components/pages/AppointmentPage';
+import StudiesPage from './components/pages/StudiesPage';
+import ReportsPage from './components/pages/ReportsPage';
+
+// Contexto de autenticación
+import { AuthContext } from './contexts/AuthContext';
 
 function App() {
-  // Estado para controlar qué componente se muestra
-  const [currentPage, setCurrentPage] = useState('dashboard');
-
-  // Función para renderizar el componente actual
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'agenda':
-        // Envuelve Agenda en un try-catch para evitar que los errores bloqueen toda la app
-        try {
-          return <Agenda />;
-        } catch (error) {
-          console.error("Error en el componente Agenda:", error);
-          return (
-            <Box p={3}>
-              <Typography color="error" variant="h6">
-                Error al cargar el componente Agenda. Por favor, contacte al soporte técnico.
-              </Typography>
-            </Box>
-          );
-        }
-      case 'pacientes':
-        return <Pacientes />;
-      case 'imagenes':
-        return <Imagenes />;
-      default:
-        return <Dashboard />;
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Suscribirse a cambios de autenticación
+    const unsubscribe = onAuthChange(({ user, userData }) => {
+      setCurrentUser(user ? { ...user, userData } : null);
+      setLoading(false);
+    });
+    
+    // Limpiar suscripción al desmontar
+    return () => unsubscribe();
+  }, []);
+  
+  // Componente para rutas protegidas
+  const PrivateRoute = ({ children }) => {
+    if (loading) {
+      return <div className="loading-screen">Cargando...</div>;
     }
+    
+    if (!currentUser) {
+      return <Navigate to="/login" />;
+    }
+    
+    return children;
   };
-
+  
   return (
-    <div className="App">
-      {/* Barra superior */}
-      <Box sx={{ 
-        backgroundColor: 'primary.main', 
-        color: 'white', 
-        padding: 2,
-        display: 'flex',
-        alignItems: 'center'
-      }}>
-        <Typography variant="h6" component="div">
-          Tesla-EC — Centro de Diagnóstico por Imagen
-        </Typography>
-      </Box>
-
-      <Box sx={{ display: 'flex' }}>
-        {/* Barra lateral de navegación */}
-        <Paper 
-          sx={{ 
-            width: 240, 
-            minHeight: 'calc(100vh - 64px)', 
-            borderRadius: 0,
-            borderRight: '1px solid #eee'
-          }}
-        >
-          <List>
-            <ListItem 
-              button 
-              selected={currentPage === 'dashboard'} 
-              onClick={() => setCurrentPage('dashboard')}
-            >
-              <ListItemIcon>
-                <DashboardIcon />
-              </ListItemIcon>
-              <ListItemText primary="Dashboard" />
-            </ListItem>
+    <AuthContext.Provider value={{ currentUser, loading }}>
+      <Router>
+        <div className="app-container">
+          <Routes>
+            {/* Rutas de autenticación */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/reset-password" element={<PasswordReset />} />
             
-            <ListItem 
-              button 
-              selected={currentPage === 'agenda'} 
-              onClick={() => setCurrentPage('agenda')}
-            >
-              <ListItemIcon>
-                <CalendarTodayIcon />
-              </ListItemIcon>
-              <ListItemText primary="Agenda" />
-            </ListItem>
+            {/* Ruta principal (dashboard) */}
+            <Route 
+              path="/" 
+              element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              } 
+            />
             
-            <ListItem 
-              button 
-              selected={currentPage === 'pacientes'} 
-              onClick={() => setCurrentPage('pacientes')}
-            >
-              <ListItemIcon>
-                <PeopleIcon />
-              </ListItemIcon>
-              <ListItemText primary="Pacientes" />
-            </ListItem>
+            {/* Ruta para dashboard de un médico específico */}
+            <Route 
+              path="/doctor/:doctorId" 
+              element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              } 
+            />
             
-            <ListItem 
-              button 
-              selected={currentPage === 'imagenes'} 
-              onClick={() => setCurrentPage('imagenes')}
-            >
-              <ListItemIcon>
-                <ImageIcon />
-              </ListItemIcon>
-              <ListItemText primary="Imágenes" />
-            </ListItem>
-          </List>
-        </Paper>
-
-        {/* Contenido principal */}
-        <Container maxWidth="lg" sx={{ py: 4, px: 2, flexGrow: 1 }}>
-          {renderCurrentPage()}
-        </Container>
-      </Box>
-    </div>
+            {/* Rutas de pacientes */}
+            <Route 
+              path="/patients" 
+              element={
+                <PrivateRoute>
+                  <PatientPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/patients/:patientId" 
+              element={
+                <PrivateRoute>
+                  <PatientPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/patients/new" 
+              element={
+                <PrivateRoute>
+                  <PatientPage isNew={true} />
+                </PrivateRoute>
+              } 
+            />
+            
+            {/* Rutas de citas */}
+            <Route 
+              path="/appointments" 
+              element={
+                <PrivateRoute>
+                  <AppointmentPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/appointments/:appointmentId" 
+              element={
+                <PrivateRoute>
+                  <AppointmentPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/appointments/new" 
+              element={
+                <PrivateRoute>
+                  <AppointmentPage isNew={true} />
+                </PrivateRoute>
+              } 
+            />
+            
+            {/* Rutas de estudios */}
+            <Route 
+              path="/studies" 
+              element={
+                <PrivateRoute>
+                  <StudiesPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/studies/:studyId" 
+              element={
+                <PrivateRoute>
+                  <StudiesPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/studies/new" 
+              element={
+                <PrivateRoute>
+                  <StudiesPage isNew={true} />
+                </PrivateRoute>
+              } 
+            />
+            
+            {/* Rutas de informes */}
+            <Route 
+              path="/reports" 
+              element={
+                <PrivateRoute>
+                  <ReportsPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/reports/:reportId" 
+              element={
+                <PrivateRoute>
+                  <ReportsPage />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/reports/new" 
+              element={
+                <PrivateRoute>
+                  <ReportsPage isNew={true} />
+                </PrivateRoute>
+              } 
+            />
+            
+            {/* Ruta por defecto (redirige al dashboard) */}
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthContext.Provider>
   );
 }
 
